@@ -51,18 +51,21 @@ pipeline {
 	  }
 	}
 
-       stage('Deploy to EC2') {
-          steps {
-             script {
-	         def outputs = readJSON file: 'terraform/outputs.json'
-                 def ip = outputs.app_public_ip.value
-                 echo "App IP: ${ip}"
-		 withCredentials([sshUserPrivateKey(
-        	    credentialsId: 'jenkins-key',
-                    keyFileVariable: 'SSH_KEY',
-        	    usernameVariable: 'SSH_USER'
-     		 )]) { 
-			    timeout(time: 3, unit: 'MINUTES') {
+    stage('Deploy to EC2') {
+      steps {
+        script {
+            // Read Terraform outputs JSON
+            def outputs = readJSON file: 'terraform/outputs.json'
+            def appIP = outputs.app_public_ip.value  // Use this variable consistently
+            echo "App IP: ${appIP}"
+
+            withCredentials([sshUserPrivateKey(
+                credentialsId: 'jenkins-key',
+                keyFileVariable: 'SSH_KEY',
+                usernameVariable: 'SSH_USER'
+            )]) {
+                timeout(time: 3, unit: 'MINUTES') {
+                    // Wait until SSH port is open
                     waitUntil {
                         script {
                             def result = sh(
@@ -70,17 +73,19 @@ pipeline {
                                 returnStatus: true
                             )
                             return result == 0
-                         }
-                      }
+                        }
+                    }
+
+                    // Deploy application
+                    sh """
+                        scp -o StrictHostKeyChecking=no -i $SSH_KEY -r app/* ${SSH_USER}@${appIP}:/home/deploy/app/
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY ${SSH_USER}@${appIP} 'sudo chown -R deploy:deploy /home/deploy/app && sudo systemctl restart cicd-app.service'
+                    """
                   }
-		   sh """
-	 	       scp -o StrictHostKeyChecking=no -i $SSH_KEY -r app/* ${SSH_USER}@${ip}:/home/deploy/app/
-          	       ssh -o StrictHostKeyChecking=no -i $SSH_KEY ${SSH_USER}@${ip} 'sudo chown -R deploy:deploy /home/deploy/app && sudo systemctl restart cicd-app.service'
-		   """
-		  }
-	       }
-	    }
-	}
+              }
+           }
+        }
+     }
 
        stage('Smoke Test') {
             steps {
