@@ -27,11 +27,11 @@ resource "aws_security_group" "web_sg" {
 }
 
 data "aws_ami" "ubuntu" {
-   owner = ["099720109477"]
+   owners = ["099720109477"]
    most_recent = true
    filter {
       name = "name"
-      value = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+      values = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
    }
 }
 
@@ -49,7 +49,10 @@ resource "aws_instance" "app" {
 }
 
 resource "aws_s3_bucket" "app_bucket" {
-   bucket = var.app_bucket_name
-   acl = "private"
-   force_destroy = true
+  bucket = "your-bucket-name"
+}
+
+resource "aws_s3_bucket_acl" "app_bucket_acl" {
+  bucket = aws_s3_bucket.app_bucket.id
+  acl    = "private"
 }
