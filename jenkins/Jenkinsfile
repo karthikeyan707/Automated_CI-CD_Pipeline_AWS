@@ -1,0 +1,94 @@
+pipeline {
+   agent any 
+
+   environment {
+      AWS_DEFAULT_REGION = 'us-west-2'
+      TF_WORKSPACE = "default"
+   }
+
+
+   stages {
+      stage('Checkout') {
+         steps {
+            checkout scm
+  	 }
+      }
+
+      stage('Build') {
+         steps {
+ 	    dir('app') {
+   	       sh 'npm install'
+	       sh 'npm run test'
+	    }
+	  }
+       }
+
+       stage('Terraform Init and Plan') {
+          steps {
+	     withCredentials([
+		file(credentialsId: 'jenkins-key-public', variable: 'PUB_KEY')
+             ]) {
+	       dir('terraform') {
+	         sh 'terraform init -input=false'
+		 sh """
+          	    terraform plan -out=tfplan -input=false -var="key_pair_name=jenkins-key" -var="public_key_path=$PUB_KEY" -var="app_bucket_name=my-cicd-demo-bucket-unique-12345"
+                 """
+		 sh 'terraform show -no-color tfplan > plan.txt'
+		 archiveArtifacts artifacts: 'plan.txt', allowEmptyArchive: true
+	       }
+	     }
+           }
+	}
+
+       stage('Terraform apply') {
+          steps {
+	     dir('terraform') {
+	        sh 'terraform apply -input=false -auto-approve tfplan'
+	        sh 'terraform output -json > outputs.json'
+		archiveArtifacts artifacts: 'outputs.json', allowEmptyArchive: true
+	     }
+	  }
+	}
+
+       stage('Deploy to EC2') {
+          steps {
+             script {
+	         def outputs = readJSON file: 'terraform/outputs.json'
+                 def ip = outputs.app_public_ip.value
+                 echo "App IP: ${ip}"
+		 withCredentials([sshUserPrivateKey(
+        	    credentialsId: 'jenkins-key',
+                    keyFileVariable: 'SSH_KEY',
+        	    usernameVariable: 'SSH_USER'
+     		 )]) { 
+		   sh """
+	 	       scp -o StrictHostKeyChecking=no -i $SSH_KEY -r app/* ${SSH_USER}@${ip}:/home/deploy/app/
+          	       ssh -o StrictHostKeyChecking=no -i $SSH_KEY ${SSH_USER}@${ip} 'sudo chown -R deploy:deploy /home/deploy/app && sudo systemctl restart cicd-app.service'
+		   """
+		  }
+	       }
+	    }
+	}
+
+	stage('Smoke Test') {
+	   steps {
+	      script {
+	         def outputs = readJSON file: 'terraform/outputs.json'
+                 def ip = outputs.app_public_ip.value
+                 sh "curl -f http://${ip}:3000/ || (echo 'Smoke test failed' && exit 1)"
+              }
+           }
+        }
+     }
+
+     post {
+	success { 
+	   echo 'Pipeline succeeded'
+	}
+	failure {
+	   echo 'Pipeline failed'
+	}
+     }
+
+} 
+	
