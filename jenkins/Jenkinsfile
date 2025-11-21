@@ -32,7 +32,7 @@ pipeline {
 			 sh '''cp $PUB_KEY ./jenkins-key.pub'''
 	         sh 'terraform init -input=false'
 		 sh """
-          	    terraform plan -out=tfplan -input=false -var="key_pair_name=jenkins-key" -var="public_key_path=./jenkins-key.pub" -var="aws_region=$AWS_DEFAULT_REGION" -var="app_bucket_name=my-cicd-demo-bucket-karthi-12345"
+          	    terraform plan -out=tfplan -input=false -var="key_pair_name=jenkins-key" -var="public_key_path=./jenkins-key.pub" -var="aws_region=$AWS_DEFAULT_REGION" -var="app_bucket_name=my-cicd-nemo-bucket-karthi-38975"
                  """
 		 sh 'terraform show -no-color tfplan > plan.txt'
 		 archiveArtifacts artifacts: 'plan.txt', allowEmptyArchive: true
