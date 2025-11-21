@@ -70,16 +70,20 @@ pipeline {
 	    }
 	}
 
-	stage('Smoke Test') {
-	   steps {
-	      script {
-	         def outputs = readJSON file: 'terraform/outputs.json'
-                 def ip = outputs.app_public_ip.value
-                 sh "curl -f http://${ip}:3000/ || (echo 'Smoke test failed' && exit 1)"
-              }
-           }
+       stage('Smoke Test') {
+            steps {
+                script {
+                    def outputs = readJSON file: 'terraform/outputs.json'
+                    def ip = outputs.app_public_ip.value
+
+                    // Wait for service startup
+                    sleep 10
+
+                    sh "curl -f http://${ip}:3000/ || (echo 'Smoke test failed' && exit 1)"
+                }
+            }
         }
-     }
+    }
 
      post {
 	success { 
