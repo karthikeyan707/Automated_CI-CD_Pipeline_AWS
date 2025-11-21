@@ -56,7 +56,3 @@ resource "aws_s3_bucket" "app_bucket" {
   bucket = "karthikeyan-cicd-demo-bucket-aws"
 }
 
-resource "aws_s3_bucket_acl" "app_bucket_acl" {
-  bucket = aws_s3_bucket.app_bucket.id
-  acl    = "private"
-}
