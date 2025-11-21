@@ -53,7 +53,7 @@ resource "aws_instance" "app" {
 }
 
 resource "aws_s3_bucket" "app_bucket" {
-  bucket = "karthikeyan_CICD_demo_bucket_aws"
+  bucket = "karthikeyan_cicd_demo_bucket_aws"
 }
 
 resource "aws_s3_bucket_acl" "app_bucket_acl" {
