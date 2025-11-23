@@ -62,7 +62,7 @@ pipeline {
             withCredentials([sshUserPrivateKey(
                 credentialsId: 'jenkins-key',
                 keyFileVariable: 'SSH_KEY',
-		usernameVariable: 'SSH_USER'
+				usernameVariable: 'SSH_USER'
             )]) {
                 timeout(time: 3, unit: 'MINUTES') {
                     // Wait until SSH port is open
